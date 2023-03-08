@@ -1,16 +1,75 @@
-export const App = () => {
-  return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontSize: 40,
-        color: '#010101'
-      }}
-    >
-      React homework template
-    </div>
-  );
-};
+import { Component } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { InfinitySpin } from 'react-loader-spinner';
+import css from './App.module.css';
+import { Searchbar } from './Searchbar/Searchbar';
+import { getImages } from 'services/api';
+import ImageGallery from './ImageGallery/ImageGallery';
+import Button from './Button/Button';
+
+export class App extends Component {
+  state = {
+    searchQuery: '',
+    images: [],
+    page: 1,
+    totalHits: null,
+    loading: false,
+    error: null,
+  };
+
+  componentDidUpdate(_, prevState) {
+    if (
+      prevState.page !== this.state.page ||
+      prevState.searchQuery !== this.state.searchQuery
+    ) {
+      this.setState({ loading: true });
+
+      getImages(this.state.searchQuery, this.state.page)
+        .then(data => {
+
+          if (!data.totalHits) {
+            toast.error('Search query not found.');
+            return
+          }
+          this.setState({
+            images: [...this.state.images, ...data.hits],
+            totalHits: data.totalHits,
+            isLoading: false,
+          })
+        }
+        )
+        .catch(error => this.setState({ error }))
+        .finally(() => this.setState({ loading: false }));
+    }
+  }
+
+  handleButtonClick = () => {
+    this.setState(prevState => ({ page: prevState.page + 1 }));
+  };
+
+  handleFormSubmit = query => {
+    this.setState({
+      searchQuery: query,
+      images: [],
+      page: 1,
+      totalHits: null,
+    });
+  };
+
+  render() {
+    const { error, loading, images, totalHits } = this.state
+    return (
+      <div className={css.app}>
+        <Searchbar onSubmit={this.handleFormSubmit} />
+        {error && <p>{error.message}</p>}
+        {loading && <InfinitySpin width="200" color="#3f51b5" />}
+        {images && <ImageGallery imagesArr={this.state.images} />}
+        {totalHits > 12 && (
+          <Button onClick={this.handleButtonClick} />
+        )}
+        <ToastContainer />
+      </div>
+    );
+  }
+}
